@@ -1712,6 +1712,10 @@ voice_assistant:
     - lambda: id(init_in_progress) = false;
     - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
     - script.execute: control_leds
+    # Brief delay before continuous stream: reduces HA ESPHome API "not authenticated yet"
+    # when the first pipeline event is sent after wake. Office OK at 2s; kitchen/master/living
+    # still 2-try at 2s (2026-06-29) — bump to 3s before wider OTA.
+    - delay: 3s
     - voice_assistant.start_continuous:
   on_client_disconnected:
     - voice_assistant.stop:
@@ -1747,8 +1751,11 @@ voice_assistant:
         id: media_mixing_input
         decibel_reduction: 20  # Number of dB quieter; higher implies more quiet, 0 implies full volume
         duration: 0.0s         # The duration of the transition (default is no transition)
+  # Server OWW starts pipeline before STT VAD is ready. Keep phase idle on on_listening so
+  # ready-LED does not invite speech too early (stt-no-text / spin-stop). Re-applied from 456bcb1
+  # after 799c23c revert dropped it. Chime at VAD omitted (wake_sound off on server-OWW).
   on_listening:
-    - lambda: id(voice_assistant_phase) = ${voice_assist_waiting_for_command_phase_id};
+    - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
     - script.execute: control_leds
   on_stt_vad_start:
     - lambda: id(voice_assistant_phase) = ${voice_assist_listening_for_command_phase_id};
